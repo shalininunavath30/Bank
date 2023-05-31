@@ -1,0 +1,111 @@
+
+from pyspark import StorageLevel
+df=spark.read.csv("dbfs:/FileStore/shared_uploads/shalininunavath19241@gmail.com/bank_transactions.csv",inferSchema=True,header=True)
+from pyspark import StorageLevel
+df1=spark.read.csv("dbfs:/FileStore/shared_uploads/shalininunavath19241@gmail.com/bank_transactions.csv",inferSchema=True,header=True)
+df2=df1.persist(StorageLevel.MEMORY_AND_DISK)
+#print(type(df2))
+def run_query():
+    while True:
+        print(''' 
+                1.Number of customers with balance > 500 and transaction amount < 50000: 
+                2. Average account balance of female customers: 
+                3. Female customers located in Chennai: 
+                4. Group customers by gender and show the total transaction amount for each group 
+                5. The highest transaction amount for each day in Mumbai 
+                6. The average transaction amount for all transactions 
+                7. The highest transaction amount 
+                8. The lowest transaction amount 
+                9. The customer with the highest transaction amount 
+                10. T1ransactions made on a specific date (e.g. "21-10-2016") 
+                11. Balance of each customer on a specific date range (e.g. "03-08-2016" to "21-10-2016") 
+                12. The customers with the highest account balance 
+                13. Group transactions by location and the total transaction amount and count for each group 
+                14. Balance of each customer during a specific time range (e.g. "52256" to "183144") 
+                15. Maximum customer balance for each location 
+                16.The top 10 customers with the highest TransactionAmount
+                17. Find the top 10 customers with the highest TransactionAmount  
+                18. Exit ''')
+        query_number= int(input("Enter your choice: "))
+        if query_number == 1:
+            df.filter((df["CustAccountBalance"]>500) & (df["TransactionAmount (INR)"]<50000)).show()
+        elif query_number == 2:
+            df.filter(df["CustGender"] == "F").selectExpr("avg(CustAccountBalance)").show() 
+        elif query_number == 3:
+            df.filter((df["CustGender"]=="F") & (df["CustLocation"]=="CHENNAI")).show() 
+        elif query_number == 4:
+            df.select("TransactionAmount (INR)").agg({"TransactionAmount (INR)": "avg"}).show()
+        elif query_number == 5:
+            df.select("TransactionAmount (INR)").agg({"TransactionAmount (INR)": "max"}).show() 
+        elif query_number == 6:
+            df.select("TransactionAmount (INR)").agg({"TransactionAmount (INR)": "min"}).show()
+        elif query_number == 7:
+            from pyspark.sql.functions import desc
+            #import pandas as p
+            sorted_transactions = df.sort(desc("TransactionTime"))
+            highest_transaction = sorted_transactions.first()
+            print("TransactionID:",highest_transaction.TransactionTime)
+            print("Transaction Time:",highest_transaction.TransactionTime)
+        elif query_number == 8:
+            result = df.filter(df['CustGender'] == "M")
+            result.persist(StorageLevel.DISK_ONLY)
+            result.show()   
+        elif query_number == 9:
+            from pyspark.sql.functions import col
+            df.filter(col("TransactionDate") == "2016-08-06").show()
+        elif query_number == 10:
+            from pyspark.sql.functions import col, sum
+            filtered_transactions_df = df.filter(col("TransactionDate").between("03-08-2016", "21-10-2016"))
+            filtered_transactions_df.show()
+        elif query_number == 11:
+            df.orderBy("CustAccountBalance", ascending=False).show()
+        elif query_number == 12:
+            df.groupBy("CustLocation").agg({"TransactionAmount (INR)": "sum", "TransactionID": "count"}).show()
+        elif query_number == 13:
+            from pyspark.sql.functions import col, sum
+            filtered_transactions_df = df.filter(col("TransactionTime").between("52256", "183144"))
+            filtered_transactions_df.show()
+            customer_balances_df = filtered_transactions_df.groupBy("CustomerID")\
+                .agg(sum("TransactionAmount (INR)").alias("TotalTransactionAmount"))\
+                .join(df.select("CustomerID", "CustAccountBalance"), on="CustomerID", how="left")\
+                .withColumn("CustomerBalance", col("CustAccountBalance") + col("TotalTransactionAmount"))
+            customer_balances_df.show()   
+        elif query_number == 14:
+            from pyspark.sql.functions import desc
+            top_10_customers = df.groupBy("CustomerID").agg({"TransactionID": "sum"}) \
+                                .orderBy(desc("sum(TransactionID)"))
+            print(top_10_customers.head())
+        elif query_number==15:
+            from pyspark.sql.functions import col, sum
+
+            # Filter transactions by date range
+            filtered_transactions_df = df.filter(col("TransactionDate").between("2016-08-01", "2016-08-06"))
+
+            # Print the filtered DataFrame
+            filtered_transactions_df.show()
+        elif query_number==16:
+            #17 maximum customer balancr for each location.
+            df.createOrReplaceTempView("transactions")
+            spark.sql("SELECT t1.CustomerID, t1.CustLocation, t1.CustAccountBalance FROM transactions t1 INNER JOIN (SELECT CustLocation, MAX(CustAccountBalance) AS MaxBalance FROM transactions GROUP BY CustLocation) t2 ON t1.CustLocation = t2.CustLocation AND t1.CustAccountBalance = t2.MaxBalance").show()
+        elif query_number==17:
+
+            #Find the top 10 customers with the highest TransactionAmount
+            from pyspark.sql.functions import desc
+            top_10_customers1 = df.orderBy(desc("TransactionAmount (INR)")).limit(10)
+            top_10_customers1.show()
+
+        
+
+
+
+
+        else:
+            print("Invalid choice")  
+run_query()
+
+
+username = "Team_titans"
+pswd = "Titans@21"
+
+
+    
